@@ -1,11 +1,13 @@
 # 机房争霸杯
 
-目标地址：https://nice-nice-star.github.io/
+目标地址：j8cup.com
 
 - `index.html`：依据工作区《细则.md》生成的完整比赛规则。
 - `scoreboard/index.html`：排行榜，对应 `/scoreboard/`（访问 `/scoreboard` 时静态服务器通常会跳转）。
 - `scoreboard/scores.json`：选手名单、每个比赛日的积分变化。
 - `assets/style.css`：两页共用样式，支持窄屏与横向滚动表格。
+## Sponsors
+特别鸣谢:skyzhou
 
 ## 更新积分
 
@@ -25,13 +27,8 @@
 
 在本目录运行 `python -m http.server 8080`，访问 http://localhost:8080/ 。请通过 HTTP 访问，直接双击 HTML 的 file:// 模式不能可靠加载排行榜 JSON。
 
-## GitHub Pages 部署
 
-GitHub 账号为 `nice-nice-star`，仓库名应为 `nice-nice-star.github.io`。本地目录与 origin 已修正；本地修改不会自动重命名 GitHub 上的仓库。
-
-确认远程仓库已采用正确名称后，将本目录内容提交并推送到该仓库。在仓库 Settings → Pages 选择 Deploy from a branch，选择发布分支和根目录 `/ (root)`，保存并等待部署。
-
-首页：https://nice-nice-star.github.io/
-排行榜：https://nice-nice-star.github.io/scoreboard/
+首页：https://j8cup.com/
+排行榜：https://j8cup.com/scoreboard/
 
 当前交付为本地页面文件，未自动提交、推送或变更 GitHub Pages 配置。
