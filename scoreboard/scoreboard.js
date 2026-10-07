@@ -14,18 +14,27 @@ function signed(value) { return `${value > 0 ? '+' : ''}${value.toFixed(1)}`; }
 function color(value) { return value > 0 ? 'positive' : value < 0 ? 'negative' : ''; }
 function validate(data) {
   if (!Array.isArray(data.players) || !data.players.length || data.players.some(p => typeof p !== 'string' || !p.trim()) || new Set(data.players).size !== data.players.length || !Array.isArray(data.dates)) throw new Error('Invalid data');
-  const dates = new Set();
   for (const day of data.dates) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || dates.has(day.date) || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('Invalid date');
-    dates.add(day.date);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('Invalid date');
     for (const [name, value] of Object.entries(day.changes)) {
       if (!data.players.includes(name) || typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value * 10 - Math.round(value * 10)) > 0.000001) throw new Error('Invalid score');
     }
   }
   return data;
 }
+function aggregateDays(records) {
+  const dates = new Map();
+  for (const record of records) {
+    if (!dates.has(record.date)) dates.set(record.date, {date: record.date, changes: Object.create(null)});
+    const day = dates.get(record.date);
+    for (const [name, value] of Object.entries(record.changes)) {
+      day.changes[name] = (Math.round((day.changes[name] ?? 0) * 10) + Math.round(value * 10)) / 10;
+    }
+  }
+  return [...dates.values()].sort((a,b) => a.date.localeCompare(b.date));
+}
 function render(data) {
-  const days = [...data.dates].sort((a,b) => a.date.localeCompare(b.date));
+  const days = aggregateDays(data.dates);
   const reserved = Number.isInteger(data.reservedColumns) ? Math.max(0, Math.min(10, data.reservedColumns)) : 3;
   const ranking = data.players.map((name, index) => ({name, index, total: days.reduce((sum, day) => sum + Math.round((day.changes[name] ?? 0) * 10), 0)})).sort((a,b) => b.total - a.total || a.index - b.index);
   const header = document.createElement('tr');
