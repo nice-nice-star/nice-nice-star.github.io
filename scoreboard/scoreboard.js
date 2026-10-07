@@ -13,11 +13,11 @@ function cell(tag, text, className = '') {
 function signed(value) { return `${value > 0 ? '+' : ''}${value.toFixed(1)}`; }
 function color(value) { return value > 0 ? 'positive' : value < 0 ? 'negative' : ''; }
 function validate(data) {
-  if (!Array.isArray(data.players) || !data.players.length || data.players.some(p => typeof p !== 'string' || !p.trim()) || new Set(data.players).size !== data.players.length || !Array.isArray(data.dates)) throw new Error('Invalid data');
+  if (!Array.isArray(data.players) || !data.players.length || data.players.some(p => typeof p !== 'string' || !p.trim()) || new Set(data.players).size !== data.players.length || !Array.isArray(data.dates)) throw new Error('选手名单或比赛记录格式不正确');
   for (const day of data.dates) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('Invalid date');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('比赛日期或积分记录格式不正确');
     for (const [name, value] of Object.entries(day.changes)) {
-      if (!data.players.includes(name) || typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value * 10 - Math.round(value * 10)) > 0.000001) throw new Error('Invalid score');
+      if (!data.players.includes(name) || typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value * 10 - Math.round(value * 10)) > 0.000001) throw new Error(`积分记录不正确：${day.date} ${name}；请检查姓名和分数（最多一位小数）`);
     }
   }
   return data;
@@ -68,15 +68,22 @@ function render(data) {
 async function refresh() {
   if (loading) return;
   loading = true; refreshButton.disabled = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(`scores.json?t=${Date.now()}`, {cache:'no-store',signal:AbortSignal.timeout(15000)});
+    const response = await fetch(`scores.json?t=${Date.now()}`, {cache:'no-store',signal:controller.signal});
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     render(validate(await response.json()));
     hasData = true;
     statusNode.textContent = `已同步 ${new Date().toLocaleTimeString('zh-CN',{hour12:false})}`;
   } catch (error) {
-    statusNode.textContent = hasData ? '更新失败，保留上次积分；稍后重试' : '积分加载失败，请刷新重试';
-  } finally { loading = false; refreshButton.disabled = false; }
+    const reason = error.name === 'AbortError' ? '请求超时，请检查网络后重试'
+      : error instanceof SyntaxError ? '积分文件不是有效的 JSON，请检查逗号和括号'
+      : error instanceof TypeError ? '网络请求失败，请检查网络连接后重试'
+      : error.message;
+    statusNode.textContent = `${hasData ? '更新失败，保留上次积分' : '积分加载失败'}：${reason}`;
+    console.error('积分加载失败', error);
+  } finally { clearTimeout(timeout); loading = false; refreshButton.disabled = false; }
 }
 refreshButton.addEventListener('click',refresh);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
