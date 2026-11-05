@@ -12,15 +12,28 @@ function cell(tag, text, className = '') {
 }
 function signed(value) { return `${value > 0 ? '+' : ''}${value.toFixed(1)}`; }
 function color(value) { return value > 0 ? 'positive' : value < 0 ? 'negative' : ''; }
+function normalizeDate(value) {
+  const match = typeof value === 'string' && /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value);
+  if (!match) throw new Error(`比赛日期格式不正确：${value}，请使用 YYYY-MM-DD`);
+  const [, year, month, day] = match;
+  const normalized = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  const date = new Date(`${normalized}T00:00:00Z`);
+  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== normalized) {
+    throw new Error(`比赛日期不存在：${value}`);
+  }
+  return normalized;
+}
 function validate(data) {
-  if (!Array.isArray(data.players) || !data.players.length || data.players.some(p => typeof p !== 'string' || !p.trim()) || new Set(data.players).size !== data.players.length || !Array.isArray(data.dates)) throw new Error('选手名单或比赛记录格式不正确');
-  for (const day of data.dates) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(day.date) || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('比赛日期或积分记录格式不正确');
+  if (!data || !Array.isArray(data.players) || !data.players.length || data.players.some(p => typeof p !== 'string' || !p.trim()) || new Set(data.players).size !== data.players.length || !Array.isArray(data.dates)) throw new Error('选手名单或比赛记录格式不正确');
+  const dates = data.dates.map(day => {
+    if (!day || !day.changes || typeof day.changes !== 'object' || Array.isArray(day.changes)) throw new Error('比赛日期或积分记录格式不正确');
+    const date = normalizeDate(day.date);
     for (const [name, value] of Object.entries(day.changes)) {
       if (!data.players.includes(name) || typeof value !== 'number' || !Number.isFinite(value) || Math.abs(value * 10 - Math.round(value * 10)) > 0.000001) throw new Error(`积分记录不正确：${day.date} ${name}；请检查姓名和分数（最多一位小数）`);
     }
-  }
-  return data;
+    return {...day, date};
+  });
+  return {...data, dates};
 }
 function aggregateDays(records) {
   const dates = new Map();
